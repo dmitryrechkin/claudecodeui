@@ -28,20 +28,19 @@ export function useWebSocket() {
         const config = await configResponse.json();
         wsBaseUrl = config.wsUrl;
         
-        // If the config returns localhost but we're not on localhost, use current host but with API server port
+        // If the config returns localhost but we're not on localhost, use current host with same port
         if (wsBaseUrl.includes('localhost') && !window.location.hostname.includes('localhost')) {
-          console.warn('Config returned localhost, using current host with API server port instead');
+          console.warn('Config returned localhost, using current host instead');
           const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          // For development, API server is typically on port 3002 when Vite is on 3001
-          const apiPort = window.location.port === '3001' ? '3002' : window.location.port;
-          wsBaseUrl = `${protocol}//${window.location.hostname}:${apiPort}`;
+          // Extract port from the config URL if available
+          const configUrl = new URL(wsBaseUrl);
+          const configPort = configUrl.port || (configUrl.protocol === 'wss:' ? '443' : '80');
+          wsBaseUrl = `${protocol}//${window.location.hostname}:${configPort}`;
         }
       } catch (error) {
-        console.warn('Could not fetch server config, falling back to current host with API server port');
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // For development, API server is typically on port 3002 when Vite is on 3001
-        const apiPort = window.location.port === '3001' ? '3002' : window.location.port;
-        wsBaseUrl = `${protocol}//${window.location.hostname}:${apiPort}`;
+        console.warn('Could not fetch server config, WebSocket connection may fail');
+        // Don't assume any specific port mapping - this should be handled by proper server config
+        throw new Error('Unable to determine WebSocket server URL. Please ensure the server is running and accessible.');
       }
       
       const wsUrl = `${wsBaseUrl}/ws`;
